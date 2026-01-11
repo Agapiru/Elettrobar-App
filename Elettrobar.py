@@ -6,7 +6,7 @@ from datetime import datetime
 
 # --- 1. CONFIGURAZIONE SICUREZZA E DROPBOX ---
 # Sostituisci con il tuo Token o usa st.secrets per maggiore sicurezza
-DROPBOX_TOKEN = "st.secrets["DROPBOX_TOKEN"]" 
+DROPBOX_TOKEN = st.secrets["DROPBOX_TOKEN"]
 PASSWORD_OFFICINA = "Agapiru2012" # Cambiala!
 
 def salva_su_dropbox(file_locali):
