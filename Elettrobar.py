@@ -99,7 +99,10 @@ if check_password():
                     st.write(f"*Note:* {row['Note']}")
                 with col_b:
                     if row['Allegato'] and os.path.exists(row['Allegato']):
-                        st.image(row['Allegato']) # Se è una foto la vedi subito
+                        # Usiamo l'apertura del file binario per caricarlo correttamente sul web
+                        with open(row['Allegato'], "rb") as f:
+                            immagine_byte = f.read()
+                        st.image(immagine_byte, use_container_width=True)
                     
                     # Tasto per eliminare (attenzione!)
                     if st.button("Elimina Record", key=f"del_{i}"):
