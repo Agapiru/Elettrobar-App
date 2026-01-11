@@ -1,46 +1,61 @@
 import streamlit as st
 import pandas as pd
 import os
+import dropbox
 from datetime import datetime
 
-# --- 1. PROTEZIONE ACCESSO ---
-def check_password():
-    def password_entered():
-        if st.session_state["password"] == "Agapiru2012": # Cambiala con una tua
-            st.session_state["password_correct"] = True
-            del st.session_state["password"]
-        else:
-            st.session_state["password_correct"] = False
+# --- 1. CONFIGURAZIONE SICUREZZA E DROPBOX ---
+# Sostituisci con il tuo Token o usa st.secrets per maggiore sicurezza
+DROPBOX_TOKEN = "st.secrets["DROPBOX_TOKEN"]" 
+PASSWORD_OFFICINA = "Agapiru2012" # Cambiala!
 
-    if "password_correct" not in st.session_state:
-        st.text_input("Inserisci Password Officina", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.text_input("Password errata, riprova", type="password", on_change=password_entered, key="password")
-        st.error("😕 Password non corretta")
-        return False
-    else:
+def salva_su_dropbox(file_locali):
+    """Invia i file al tuo Dropbox"""
+    try:
+        dbx = dropbox.Dropbox(DROPBOX_TOKEN)
+        for percorso_locale in file_locali:
+            if os.path.exists(percorso_locale):
+                nome_file_dbx = "/" + os.path.basename(percorso_locale)
+                with open(percorso_locale, "rb") as f:
+                    dbx.files_upload(f.read(), nome_file_dbx, mode=dropbox.files.WriteMode.overwrite)
         return True
+    except Exception as e:
+        st.error(f"Errore sincronizzazione Dropbox: {e}")
+        return False
+
+# --- 2. PROTEZIONE ACCESSO ---
+def check_password():
+    if "password_correct" not in st.session_state:
+        st.session_state["password_correct"] = False
+
+    if not st.session_state["password_correct"]:
+        with st.container():
+            st.title("🛠 ELETTROBAR WEB")
+            pwd = st.text_input("Inserisci Password Officina", type="password")
+            if st.button("Accedi"):
+                if pwd == PASSWORD_OFFICINA:
+                    st.session_state["password_correct"] = True
+                    st.rerun()
+                else:
+                    st.error("Password errata")
+        return False
+    return True
 
 if check_password():
-    # --- 2. CONFIGURAZIONE E SETUP ---
-    st.set_page_config(page_title="OFFICINA DIGITALE 1.3", layout="wide")
+    # --- 3. CONFIGURAZIONE AMBIENTE ---
+    st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
     DB_NOME = "diario_officina.csv"
     ALLEGATI_DIR = "allegati"
 
-    if not os.path.exists(ALLEGATI_DIR):
-        os.makedirs(ALLEGATI_DIR)
-
+    if not os.path.exists(ALLEGATI_DIR): os.makedirs(ALLEGATI_DIR)
     if not os.path.exists(DB_NOME):
-        df = pd.DataFrame(columns=['Data', 'Brand', 'Modello', 'Motore', 'Sintomo', 'Diagnosi', 'Soluzione', 'Note', 'Allegato'])
-        df.to_csv(DB_NOME, index=False)
+        pd.DataFrame(columns=['Data', 'Brand', 'Modello', 'Motore', 'Sintomo', 'Diagnosi', 'Soluzione', 'Note', 'Allegato']).to_csv(DB_NOME, index=False)
 
-    # --- 3. BARRA LATERALE ---
-    st.sidebar.title("🛠 DIARIO OFFICINA")
-    menu = st.sidebar.radio("Navigazione", ["Inserisci Intervento", "Archivio Storico"])
+    st.sidebar.title("MENU")
+    menu = st.sidebar.radio("Vai a:", ["Nuovo Intervento", "Archivio Storico"])
 
-    # --- 4. LOGICA INSERIMENTO ---
-    if menu == "Inserisci Intervento":
+    # --- 4. NUOVO INTERVENTO ---
+    if menu == "Nuovo Intervento":
         st.header("📝 Nuova Scheda Tecnica")
         with st.form("form_lavoro", clear_on_submit=True):
             c1, c2, c3 = st.columns(3)
@@ -48,14 +63,11 @@ if check_password():
             modello = c2.text_input("Modello")
             motore = c3.text_input("Codice Motore")
             
-            sintomo = st.text_area("Sintomo / Difetto riscontrato")
-            diagnosi = st.text_area("Diagnosi")
-            soluzione = st.text_area("Riparazione / Soluzione")
-            note = st.text_area("Note Extra")
+            sintomo = st.text_area("Sintomo / Difetto")
+            soluzione = st.text_area("Soluzione")
+            file = st.file_uploader("Allega foto", type=['png', 'jpg', 'jpeg'])
             
-            file = st.file_uploader("Allega foto o documenti", type=['png', 'jpg', 'jpeg', 'pdf'])
-            
-            if st.form_submit_button("SALVA IN ARCHIVIO"):
+            if st.form_submit_button("SALVA E SINCRONIZZA"):
                 if brand and modello:
                     path_file = ""
                     if file:
@@ -66,46 +78,72 @@ if check_password():
                     nuovo = pd.DataFrame([{
                         'Data': datetime.now().strftime("%d/%m/%Y %H:%M"),
                         'Brand': brand, 'Modello': modello, 'Motore': motore,
-                        'Sintomo': sintomo, 'Diagnosi': diagnosi, 'Soluzione': soluzione,
-                        'Note': note, 'Allegato': path_file
+                        'Sintomo': sintomo, 'Soluzione': soluzione, 'Allegato': path_file
                     }])
                     
                     df = pd.read_csv(DB_NOME)
                     df = pd.concat([df, nuovo], ignore_index=True)
                     df.to_csv(DB_NOME, index=False)
-                    st.success(f"Intervento su {brand} salvato correttamente!")
+                    
+                    # Sincronizzazione Dropbox
+                    file_da_caricare = [DB_NOME]
+                    if path_file: file_da_caricare.append(path_file)
+                    
+                    if salva_su_dropbox(file_da_caricare):
+                        st.success("✅ Salvato e Sincronizzato su Dropbox!")
                 else:
-                    st.warning("Brand e Modello sono necessari.")
+                    st.warning("Brand e Modello obbligatori.")
 
-    # --- 5. LOGICA RICERCA E MODIFICA ---
+    # --- 5. ARCHIVIO ---
     else:
-        st.header("🔍 Consulta Archivio")
+        st.header("🔍 Archivio Storico")
         df = pd.read_csv(DB_NOME)
         
-        search = st.text_input("Cerca parola chiave...")
+        search = st.text_input("Cerca per Brand, Modello o Sintomo...")
         if search:
-            mask = df.apply(lambda r: search.lower() in r.astype(str).str.lower().values, axis=1)
-            df_display = df[mask]
-        else:
-            df_display = df
+            df = df[df.apply(lambda r: search.lower() in r.astype(str).str.lower().values, axis=1)]
 
-        for i, row in df_display.sort_index(ascending=False).iterrows():
-            with st.expander(f"🚗 {row['Brand']} {row['Modello']} - {row['Data']}"):
-                col_a, col_b = st.columns([3, 1])
-                with col_a:
-                    st.write(f"**Motore:** {row['Motore']}")
-                    st.write(f"**Sintomo:** {row['Sintomo']}")
-                    st.success(f"**Soluzione:** {row['Soluzione']}")
-                    st.write(f"*Note:* {row['Note']}")
-                with col_b:
-                    if row['Allegato'] and os.path.exists(row['Allegato']):
-                        # Usiamo l'apertura del file binario per caricarlo correttamente sul web
-                        with open(row['Allegato'], "rb") as f:
-                            immagine_byte = f.read()
-                        st.image(immagine_byte, use_container_width=True)
+        # Visualizziamo dal più recente
+        for i, row in df.sort_index(ascending=False).iterrows():
+            with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
+                
+                # CREIAMO IL FORM DI MODIFICA
+                with st.form(f"form_edit_{i}"):
+                    st.subheader("Modifica Intervento")
+                    c1, c2, c3 = st.columns(3)
+                    new_brand = c1.text_input("Brand", value=row['Brand']).upper()
+                    new_modello = c2.text_input("Modello", value=row['Modello'])
+                    new_motore = c3.text_input("Motore", value=row['Motore'])
                     
-                    # Tasto per eliminare (attenzione!)
-                    if st.button("Elimina Record", key=f"del_{i}"):
+                    new_sintomo = st.text_area("Sintomo / Difetto", value=row['Sintomo'])
+                    new_soluzione = st.text_area("Soluzione Tecninca", value=row['Soluzione'])
+                    
+                    # Bottone per salvare le modifiche
+                    if st.form_submit_button("💾 SALVA MODIFICHE"):
+                        df.at[i, 'Brand'] = new_brand
+                        df.at[i, 'Modello'] = new_modello
+                        df.at[i, 'Motore'] = new_motore
+                        df.at[i, 'Sintomo'] = new_sintomo
+                        df.at[i, 'Soluzione'] = new_soluzione
+                        
+                        df.to_csv(DB_NOME, index=False)
+                        salva_su_dropbox([DB_NOME])
+                        st.success("Modifica salvata!")
+                        st.rerun()
+
+                # Visualizzazione Foto e tasto Elimina (fuori dal form di modifica)
+                st.write("---")
+                col_foto, col_del = st.columns([3, 1])
+                
+                with col_foto:
+                    if row['Allegato'] and os.path.exists(row['Allegato']):
+                        with open(row['Allegato'], "rb") as f:
+                            st.image(f.read(), caption="Foto allegata", width=300)
+                
+                with col_del:
+                    if st.button("🗑️ ELIMINA RECORD", key=f"del_{i}"):
                         df = df.drop(i)
                         df.to_csv(DB_NOME, index=False)
+                        salva_su_dropbox([DB_NOME])
+                        st.warning("Record eliminato.")
                         st.rerun()
