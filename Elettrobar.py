@@ -95,61 +95,76 @@ if check_password():
                     st.warning("Brand e Modello obbligatori.")
 
     # --- 5. ARCHIVIO ---
-    for i, row in df.sort_index(ascending=False).iterrows():
-            # Creiamo una chiave unica basata sull'indice e sulla data per non avere doppioni
-            unique_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
+    else:
+        st.header("🔍 Archivio Storico")
+        
+        # Carichiamo il database all'inizio del blocco Archivio
+        if os.path.exists(DB_NOME):
+            df = pd.read_csv(DB_NOME)
             
-            with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
-                
-                # CREIAMO IL FORM DI MODIFICA
-                with st.form(f"form_edit_{unique_key}"):
-                    st.subheader("Modifica Intervento")
-                    c1, c2, c3 = st.columns(3)
-                    new_brand = c1.text_input("Brand", value=row['Brand'], key=f"brand_{unique_key}").upper()
-                    new_modello = c2.text_input("Modello", value=row['Modello'], key=f"model_{unique_key}")
-                    new_motore = c3.text_input("Motore", value=row['Motore'], key=f"motor_{unique_key}")
-                    
-                    new_sintomo = st.text_area("Sintomo / Difetto", value=row['Sintomo'], key=f"sint_{unique_key}")
-                    new_soluzione = st.text_area("Soluzione Tecnica", value=row['Soluzione'], key=f"sol_{unique_key}")
-                    
-                    st.write("---")
-                    st.write("📷 **Aggiorna o aggiungi foto**")
-                    new_file = st.file_uploader("Scegli un nuovo file (opzionale)", type=['png', 'jpg', 'jpeg'], key=f"file_up_{unique_key}")
-                    
-                    if st.form_submit_button("💾 SALVA MODIFICHE"):
-                        df.at[i, 'Brand'] = new_brand
-                        df.at[i, 'Modello'] = new_modello
-                        df.at[i, 'Motore'] = new_motore
-                        df.at[i, 'Sintomo'] = new_sintomo
-                        df.at[i, 'Soluzione'] = new_soluzione
-                        
-                        file_da_sincronizzare = [DB_NOME]
-                        if new_file:
-                            new_path = os.path.join(ALLEGATI_DIR, new_file.name)
-                            with open(new_path, "wb") as f:
-                                f.write(new_file.getbuffer())
-                            df.at[i, 'Allegato'] = new_path
-                            file_da_sincronizzare.append(new_path)
-                        
-                        df.to_csv(DB_NOME, index=False)
-                        salva_su_dropbox(file_da_sincronizzare)
-                        st.success("Modifica salvata!")
-                        st.rerun()
+            search = st.text_input("Cerca per Brand, Modello o Sintomo...")
+            if search:
+                # Filtro di ricerca
+                df_filtrato = df[df.apply(lambda r: search.lower() in r.astype(str).str.lower().values, axis=1)]
+            else:
+                df_filtrato = df
 
-                # Visualizzazione Foto e tasto Elimina
-                st.write("---")
-                col_foto, col_del = st.columns([3, 1])
-                
-                with col_foto:
-                    if row['Allegato'] and os.path.exists(row['Allegato']):
-                        with open(row['Allegato'], "rb") as f:
-                            st.image(f.read(), caption="Foto attuale", width=300)
-                
-                with col_del:
-                    # Tasto elimina con chiave unica
-                    if st.button("🗑️ ELIMINA RECORD", key=f"del_btn_{unique_key}"):
-                        df = df.drop(i)
-                        df.to_csv(DB_NOME, index=False)
-                        salva_su_dropbox([DB_NOME])
-                        st.warning("Record eliminato.")
-                        st.rerun()
+            # Visualizziamo i risultati
+            if not df_filtrato.empty:
+                for i, row in df_filtrato.sort_index(ascending=False).iterrows():
+                    unique_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
+                    
+                    with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
+                        # Form di modifica
+                        with st.form(f"form_edit_{unique_key}"):
+                            st.subheader("Modifica Intervento")
+                            c1, c2, c3 = st.columns(3)
+                            new_brand = c1.text_input("Brand", value=row['Brand'], key=f"brand_{unique_key}").upper()
+                            new_modello = c2.text_input("Modello", value=row['Modello'], key=f"model_{unique_key}")
+                            new_motore = c3.text_input("Motore", value=row['Motore'], key=f"motor_{unique_key}")
+                            
+                            new_sintomo = st.text_area("Sintomo / Difetto", value=row['Sintomo'], key=f"sint_{unique_key}")
+                            new_soluzione = st.text_area("Soluzione Tecnica", value=row['Soluzione'], key=f"sol_{unique_key}")
+                            
+                            st.write("---")
+                            st.write("📷 **Aggiorna o aggiungi foto**")
+                            new_file = st.file_uploader("Scegli un nuovo file (opzionale)", type=['png', 'jpg', 'jpeg'], key=f"file_up_{unique_key}")
+                            
+                            if st.form_submit_button("💾 SALVA MODIFICHE"):
+                                df.at[i, 'Brand'] = new_brand
+                                df.at[i, 'Modello'] = new_modello
+                                df.at[i, 'Motore'] = new_motore
+                                df.at[i, 'Sintomo'] = new_sintomo
+                                df.at[i, 'Soluzione'] = new_soluzione
+                                
+                                file_da_sincronizzare = [DB_NOME]
+                                if new_file:
+                                    new_path = os.path.join(ALLEGATI_DIR, new_file.name)
+                                    with open(new_path, "wb") as f:
+                                        f.write(new_file.getbuffer())
+                                    df.at[i, 'Allegato'] = new_path
+                                    file_da_sincronizzare.append(new_path)
+                                
+                                df.to_csv(DB_NOME, index=False)
+                                salva_su_dropbox(file_da_sincronizzare)
+                                st.success("Modifica salvata!")
+                                st.rerun()
+
+                        # Visualizzazione Foto e tasto Elimina
+                        st.write("---")
+                        col_foto, col_del = st.columns([3, 1])
+                        with col_foto:
+                            if row['Allegato'] and os.path.exists(row['Allegato']):
+                                with open(row['Allegato'], "rb") as f:
+                                    st.image(f.read(), caption="Foto attuale", width=300)
+                        with col_del:
+                            if st.button("🗑️ ELIMINA RECORD", key=f"del_btn_{unique_key}"):
+                                df = df.drop(i)
+                                df.to_csv(DB_NOME, index=False)
+                                salva_su_dropbox([DB_NOME])
+                                st.warning("Record eliminato.")
+                                st.rerun()
+            else:
+                st.info("Nessun intervento trovato.")
+        else:
+            st.error("Database non trovato. Inserisci prima un nuovo intervento.")
