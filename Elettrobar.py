@@ -116,7 +116,12 @@ if check_password():
                     new_motore = c3.text_input("Motore", value=row['Motore'])
                     
                     new_sintomo = st.text_area("Sintomo / Difetto", value=row['Sintomo'])
-                    new_soluzione = st.text_area("Soluzione Tecninca", value=row['Soluzione'])
+                    new_soluzione = st.text_area("Soluzione Tecnica", value=row['Soluzione'])
+                    
+                    # NUOVO: Campo per aggiungere o cambiare la foto
+                    st.write("---")
+                    st.write("📷 **Aggiorna o aggiungi foto**")
+                    new_file = st.file_uploader("Scegli un nuovo file (opzionale)", type=['png', 'jpg', 'jpeg'], key=f"file_edit_{i}")
                     
                     # Bottone per salvare le modifiche
                     if st.form_submit_button("💾 SALVA MODIFICHE"):
@@ -126,9 +131,37 @@ if check_password():
                         df.at[i, 'Sintomo'] = new_sintomo
                         df.at[i, 'Soluzione'] = new_soluzione
                         
+                        # Gestione nuova foto se caricata
+                        file_da_sincronizzare = [DB_NOME]
+                        if new_file:
+                            new_path = os.path.join(ALLEGATI_DIR, new_file.name)
+                            with open(new_path, "wb") as f:
+                                f.write(new_file.getbuffer())
+                            df.at[i, 'Allegato'] = new_path
+                            file_da_sincronizzare.append(new_path)
+                        
+                        df.to_csv(DB_NOME, index=False)
+                        salva_su_dropbox(file_da_sincronizzare)
+                        st.success("Modifica e foto salvate!")
+                        st.rerun()
+
+                # Visualizzazione Foto Attuale e tasto Elimina
+                st.write("---")
+                col_foto, col_del = st.columns([3, 1])
+                
+                with col_foto:
+                    if row['Allegato'] and os.path.exists(row['Allegato']):
+                        with open(row['Allegato'], "rb") as f:
+                            st.image(f.read(), caption="Foto attuale", width=300)
+                    else:
+                        st.info("Nessuna foto presente per questo intervento.")
+                
+                with col_del:
+                    if st.button("🗑️ ELIMINA RECORD", key=f"del_{i}"):
+                        df = df.drop(i)
                         df.to_csv(DB_NOME, index=False)
                         salva_su_dropbox([DB_NOME])
-                        st.success("Modifica salvata!")
+                        st.warning("Record eliminato.")
                         st.rerun()
 
                 # Visualizzazione Foto e tasto Elimina (fuori dal form di modifica)
