@@ -5,14 +5,36 @@ import dropbox
 from datetime import datetime
 
 # --- 1. CONFIGURAZIONE SICUREZZA E DROPBOX ---
-# Sostituisci con il tuo Token o usa st.secrets per maggiore sicurezza
-DROPBOX_TOKEN = st.secrets["DROPBOX_TOKEN"]
-PASSWORD_OFFICINA = "Agapiru2012" # Cambiala!
+# Recuperiamo le credenziali dai Secrets (Assicurati di averle inserite in Streamlit Cloud!)
+APP_KEY = st.secrets["DROPBOX_APP_KEY"]
+APP_SECRET = st.secrets["DROPBOX_APP_SECRET"]
+REFRESH_TOKEN = st.secrets["DROPBOX_REFRESH_TOKEN"]
+PASSWORD_OFFICINA = "Agapiru2012" 
+
+def connetti_dropbox():
+    """Crea una connessione eterna usando il Refresh Token"""
+    return dropbox.Dropbox(
+        app_key=APP_KEY,
+        app_secret=APP_SECRET,
+        oauth2_refresh_token=REFRESH_TOKEN
+    )
+
+def scarica_database_da_dropbox(nome_file):
+    """Scarica il CSV all'avvio per non perdere i dati del giorno prima"""
+    try:
+        dbx = connetti_dropbox()
+        metadata, res = dbx.files_download("/" + nome_file)
+        with open(nome_file, "wb") as f:
+            f.write(res.content)
+        return True
+    except Exception as e:
+        # Se il file non esiste ancora su Dropbox, non è un errore critico
+        return False
 
 def salva_su_dropbox(file_locali):
-    """Invia i file al tuo Dropbox"""
+    """Invia i file al tuo Dropbox con connessione rigenerata"""
     try:
-        dbx = dropbox.Dropbox(DROPBOX_TOKEN)
+        dbx = connetti_dropbox()
         for percorso_locale in file_locali:
             if os.path.exists(percorso_locale):
                 nome_file_dbx = "/" + os.path.basename(percorso_locale)
@@ -46,6 +68,11 @@ if check_password():
     st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
     DB_NOME = "diario_officina.csv"
     ALLEGATI_DIR = "allegati"
+
+    # NOVITÀ: Scarica i dati aggiornati da Dropbox appena apri l'app
+    if "db_scaricato" not in st.session_state:
+        scarica_database_da_dropbox(DB_NOME)
+        st.session_state["db_scaricato"] = True
 
     if not os.path.exists(ALLEGATI_DIR): os.makedirs(ALLEGATI_DIR)
     if not os.path.exists(DB_NOME):
