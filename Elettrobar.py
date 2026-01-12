@@ -211,8 +211,15 @@ if check_password():
                         percorso_corretto_locale = os.path.join(ALLEGATI_DIR, nome_file)
 
                         if os.path.exists(percorso_corretto_locale):
-                            with open(percorso_corretto_locale, "rb") as f:
-                                st.image(f.read(), caption=f"Foto: {nome_file}", width=300)
+                            try:
+                                with open(percorso_corretto_locale, "rb") as f:
+                                     data = f.read()
+                                    if len(data) > 0: # Controlla che il file non sia vuoto
+                                        st.image(data, caption=f"Foto: {nome_file}", width=300)
+                                    else:
+                                        st.warning(f"Il file {nome_file} risulta vuoto su Dropbox.")
+                            except Exception as e:
+                                st.error(f"Impossibile leggere l'immagine {nome_file}: {e}")
                         else:
                             # Tentativo di recupero d'emergenza: scarica la singola foto se manca
                             try:
