@@ -205,30 +205,28 @@ if check_password():
                     percorso_raw = row.get('Allegato', "")
                     
                     if pd.notna(percorso_raw) and isinstance(percorso_raw, str) and percorso_raw.strip() != "":
-                        # Estraiamo solo il nome del file (es: "foto1.jpg") 
-                        # ignorando se nel database c'è scritto "allegati/foto1.jpg" o solo "foto1.jpg"
                         nome_file = os.path.basename(percorso_raw)
                         percorso_corretto_locale = os.path.join(ALLEGATI_DIR, nome_file)
 
                         if os.path.exists(percorso_corretto_locale):
                             try:
                                 with open(percorso_corretto_locale, "rb") as f:
-                                     data = f.read()
-                                    if len(data) > 0: # Controlla che il file non sia vuoto
+                                    data = f.read()
+                                    if len(data) > 0:
                                         st.image(data, caption=f"Foto: {nome_file}", width=300)
                                     else:
-                                        st.warning(f"Il file {nome_file} risulta vuoto su Dropbox.")
+                                        st.warning(f"Il file {nome_file} è vuoto.")
                             except Exception as e:
-                                st.error(f"Impossibile leggere l'immagine {nome_file}: {e}")
+                                st.error(f"Errore lettura file: {e}")
                         else:
-                            # Tentativo di recupero d'emergenza: scarica la singola foto se manca
+                            # Se non è sul server, proviamo a scaricarlo al volo
                             try:
                                 dbx = connetti_dropbox()
                                 with open(percorso_corretto_locale, "wb") as f:
                                     metadata, res = dbx.files_download(f"/allegati/{nome_file}")
                                     f.write(res.content)
-                                st.image(percorso_corretto_locale, caption=f"Recuperata da Dropbox: {nome_file}", width=300)
+                                st.image(percorso_corretto_locale, caption=f"Recuperata: {nome_file}", width=300)
                             except:
-                                st.warning(f"Foto {nome_file} non trovata né in locale né su Dropbox.")
+                                st.warning(f"Foto {nome_file} non trovata.")
                     else:
                         st.info("Nessuna foto per questo intervento.")
