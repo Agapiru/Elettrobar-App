@@ -155,21 +155,15 @@ if check_password():
                 col_foto, col_del = st.columns([3, 1])
                 
                 with col_foto:
-                    # Gestiamo i valori nulli (NaN) trasformandoli in stringhe vuote
-                    percorso_foto = row['Allegato'] if pd.notna(row['Allegato']) else ""
+                    # Controllo ultra-sicuro
+                    percorso_raw = row.get('Allegato', "")
                     
-                    if percorso_foto and isinstance(percorso_foto, str) and os.path.exists(percorso_foto):
-                        with open(percorso_foto, "rb") as f:
-                            st.image(f.read(), caption="Foto attuale", width=300)
+                    # Verifichiamo che sia una stringa valida e non un valore nullo/NaN
+                    if pd.notna(percorso_raw) and isinstance(percorso_raw, str) and percorso_raw.strip() != "":
+                        if os.path.exists(percorso_raw):
+                            with open(percorso_raw, "rb") as f:
+                                st.image(f.read(), caption="Foto attuale", width=300)
+                        else:
+                            st.warning("File foto non trovato sul server.")
                     else:
-                        st.info("Nessuna foto presente.")
-                
-                with col_del:
-                    if st.button("🗑️ ELIMINA RECORD", key=f"del_btn_{unique_key}"):
-                        # Ricarichiamo il DF aggiornato per sicurezza prima di eliminare
-                        df_temp = pd.read_csv(DB_NOME)
-                        df_temp = df_temp.drop(i)
-                        df_temp.to_csv(DB_NOME, index=False)
-                        salva_su_dropbox([DB_NOME])
-                        st.warning("Record eliminato.")
-                        st.rerun()
+                        st.info("Nessuna foto per questo intervento.")
