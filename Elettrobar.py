@@ -20,24 +20,44 @@ def connetti_dropbox():
     )
 
 def scarica_database_da_dropbox(nome_file):
-    """Scarica il CSV all'avvio per non perdere i dati del giorno prima"""
     try:
         dbx = connetti_dropbox()
+        
+        # Scarica il CSV
         metadata, res = dbx.files_download("/" + nome_file)
         with open(nome_file, "wb") as f:
             f.write(res.content)
+            
+        # Scarica le foto dalla cartella /allegati di Dropbox
+        if not os.path.exists(ALLEGATI_DIR):
+            os.makedirs(ALLEGATI_DIR)
+            
+        try:
+            # Elenca i file dentro la cartella /allegati su Dropbox
+            risultato = dbx.files_list_folder('/allegati')
+            for entry in risultato.entries:
+                percorso_locale = os.path.join(ALLEGATI_DIR, entry.name)
+                if not os.path.exists(percorso_locale):
+                    dbx.files_download_to_file(percorso_locale, "/allegati/" + entry.name)
+        except:
+            # Se la cartella /allegati non esiste ancora su Dropbox, non facciamo nulla
+            pass
+            
         return True
     except Exception as e:
-        # Se il file non esiste ancora su Dropbox, non è un errore critico
         return False
 
 def salva_su_dropbox(file_locali):
-    """Invia i file al tuo Dropbox con connessione rigenerata"""
     try:
         dbx = connetti_dropbox()
         for percorso_locale in file_locali:
             if os.path.exists(percorso_locale):
-                nome_file_dbx = "/" + os.path.basename(percorso_locale)
+                # Se è la foto, la mettiamo nella cartella /allegati su Dropbox
+                if "allegati" in percorso_locale:
+                    nome_file_dbx = "/allegati/" + os.path.basename(percorso_locale)
+                else:
+                    nome_file_dbx = "/" + os.path.basename(percorso_locale)
+                
                 with open(percorso_locale, "rb") as f:
                     dbx.files_upload(f.read(), nome_file_dbx, mode=dropbox.files.WriteMode.overwrite)
         return True
