@@ -59,8 +59,28 @@ if not st.session_state["password_correct"]:
         else: st.error("Password errata")
     st.stop()
 
-# --- 3. CONFIGURAZIONE AMBIENTE ---
+# --- 3. CONFIGURAZIONE AMBIENTE ED ESTETICA ---
 st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
+
+# CSS per sfondo grigio e card bianche (sempre attivo)
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #F5F5F5;
+    }
+    .streamlit-expanderHeader {
+        background-color: white !important;
+        border-radius: 8px;
+        border: 1px solid #E0E0E0;
+    }
+    .stForm {
+        background-color: white !important;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    </style>
+    """, unsafe_allow_index=True)
+
 if "db_scaricato" not in st.session_state:
     scarica_database_da_dropbox(DB_NOME)
     st.session_state["db_scaricato"] = True
@@ -135,7 +155,7 @@ else:
                         salva_su_dropbox(f_sync)
                         st.rerun()
 
-                # --- VISUALIZZAZIONE FOTO ---
+                # --- VISUALIZZAZIONE FOTO (Indentazione corretta dentro l'expander) ---
                 p_db = str(row.get('Allegato', ""))
                 if p_db and p_db != "nan" and p_db.strip() != "":
                     n_file = os.path.basename(p_db)
