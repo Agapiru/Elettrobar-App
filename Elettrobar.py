@@ -202,15 +202,26 @@ if check_password():
                 col_foto, col_del = st.columns([3, 1])
                 
                 with col_foto:
-                    # Controllo ultra-sicuro
                     percorso_raw = row.get('Allegato', "")
                     
-                    # Verifichiamo che sia una stringa valida e non un valore nullo/NaN
                     if pd.notna(percorso_raw) and isinstance(percorso_raw, str) and percorso_raw.strip() != "":
-                        if os.path.exists(percorso_raw):
-                            with open(percorso_raw, "rb") as f:
-                                st.image(f.read(), caption="Foto attuale", width=300)
+                        # Estraiamo solo il nome del file (es: "foto1.jpg") 
+                        # ignorando se nel database c'è scritto "allegati/foto1.jpg" o solo "foto1.jpg"
+                        nome_file = os.path.basename(percorso_raw)
+                        percorso_corretto_locale = os.path.join(ALLEGATI_DIR, nome_file)
+
+                        if os.path.exists(percorso_corretto_locale):
+                            with open(percorso_corretto_locale, "rb") as f:
+                                st.image(f.read(), caption=f"Foto: {nome_file}", width=300)
                         else:
-                            st.warning("File foto non trovato sul server.")
+                            # Tentativo di recupero d'emergenza: scarica la singola foto se manca
+                            try:
+                                dbx = connetti_dropbox()
+                                with open(percorso_corretto_locale, "wb") as f:
+                                    metadata, res = dbx.files_download(f"/allegati/{nome_file}")
+                                    f.write(res.content)
+                                st.image(percorso_corretto_locale, caption=f"Recuperata da Dropbox: {nome_file}", width=300)
+                            except:
+                                st.warning(f"Foto {nome_file} non trovata né in locale né su Dropbox.")
                     else:
                         st.info("Nessuna foto per questo intervento.")
