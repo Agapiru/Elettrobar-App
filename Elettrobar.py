@@ -151,20 +151,25 @@ if check_password():
                                 st.rerun()
 
                         # Visualizzazione Foto e tasto Elimina
-                        st.write("---")
-                        col_foto, col_del = st.columns([3, 1])
-                        with col_foto:
-                            if row['Allegato'] and os.path.exists(row['Allegato']):
-                                with open(row['Allegato'], "rb") as f:
-                                    st.image(f.read(), caption="Foto attuale", width=300)
-                        with col_del:
-                            if st.button("🗑️ ELIMINA RECORD", key=f"del_btn_{unique_key}"):
-                                df = df.drop(i)
-                                df.to_csv(DB_NOME, index=False)
-                                salva_su_dropbox([DB_NOME])
-                                st.warning("Record eliminato.")
-                                st.rerun()
-            else:
-                st.info("Nessun intervento trovato.")
-        else:
-            st.error("Database non trovato. Inserisci prima un nuovo intervento.")
+                st.write("---")
+                col_foto, col_del = st.columns([3, 1])
+                
+                with col_foto:
+                    # Gestiamo i valori nulli (NaN) trasformandoli in stringhe vuote
+                    percorso_foto = row['Allegato'] if pd.notna(row['Allegato']) else ""
+                    
+                    if percorso_foto and isinstance(percorso_foto, str) and os.path.exists(percorso_foto):
+                        with open(percorso_foto, "rb") as f:
+                            st.image(f.read(), caption="Foto attuale", width=300)
+                    else:
+                        st.info("Nessuna foto presente.")
+                
+                with col_del:
+                    if st.button("🗑️ ELIMINA RECORD", key=f"del_btn_{unique_key}"):
+                        # Ricarichiamo il DF aggiornato per sicurezza prima di eliminare
+                        df_temp = pd.read_csv(DB_NOME)
+                        df_temp = df_temp.drop(i)
+                        df_temp.to_csv(DB_NOME, index=False)
+                        salva_su_dropbox([DB_NOME])
+                        st.warning("Record eliminato.")
+                        st.rerun()
