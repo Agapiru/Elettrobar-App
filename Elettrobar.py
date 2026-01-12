@@ -185,17 +185,26 @@ if check_password():
                                 df.at[i, 'Soluzione'] = new_soluzione
                                 
                                 file_da_sincronizzare = [DB_NOME]
+                                
                                 if new_file:
-                                    new_path = os.path.join(ALLEGATI_DIR, new_file.name)
+                                    # Gestione corretta del percorso foto
+                                    nome_file = new_file.name
+                                    new_path = os.path.join(ALLEGATI_DIR, nome_file)
+                                    
+                                    # Salva fisicamente il file sul server temporaneo
                                     with open(new_path, "wb") as f:
                                         f.write(new_file.getbuffer())
+                                    
+                                    # Scrive il percorso nel database
                                     df.at[i, 'Allegato'] = new_path
                                     file_da_sincronizzare.append(new_path)
                                 
+                                # Salva il CSV locale e spedisce tutto a Dropbox
                                 df.to_csv(DB_NOME, index=False)
                                 salva_su_dropbox(file_da_sincronizzare)
+                                
                                 st.success("Modifica salvata!")
-                                st.rerun()
+                                st.rerun() # Ricarica la pagina per mostrare la foto
 
                         # Visualizzazione Foto e tasto Elimina
                 st.write("---")
