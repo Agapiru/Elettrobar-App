@@ -62,19 +62,17 @@ if not st.session_state["password_correct"]:
 # --- 3. CONFIGURAZIONE AMBIENTE ED ESTETICA ---
 st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
 
-# CSS Canna di Fucile (Dark Mode Professionale)
+# CSS Grigio Chiaro Professionale
 st.markdown("""
     <style>
-    .stApp { background-color: #2C3E50; }
-    h1, h2, h3, label, .stMarkdown { color: #FFFFFF !important; }
+    .stApp { background-color: #F5F5F5; }
     .streamlit-expanderHeader { 
-        background-color: #34495E !important; 
-        color: white !important; 
-        border: 1px solid #455A64;
+        background-color: white !important; 
+        border-radius: 8px; 
+        border: 1px solid #E0E0E0; 
     }
-    .streamlit-expanderContent { background-color: white !important; color: black !important; }
-    div[data-testid="stForm"] { background-color: #F8F9FA !important; border-radius: 10px; padding: 20px; color: black !important; }
-    div[data-testid="stForm"] p, div[data-testid="stForm"] label { color: black !important; }
+    .streamlit-expanderContent { background-color: white !important; }
+    div[data-testid="stForm"] { background-color: white !important; border-radius: 10px; padding: 20px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -86,7 +84,6 @@ if not os.path.exists(ALLEGATI_DIR): os.makedirs(ALLEGATI_DIR)
 if not os.path.exists(DB_NOME):
     pd.DataFrame(columns=['Data', 'Brand', 'Modello', 'Motore', 'Sintomo', 'Soluzione', 'Allegato']).to_csv(DB_NOME, index=False)
 
-# Menu laterale
 st.sidebar.title("MENU")
 menu = st.sidebar.radio("Vai a:", ["Nuovo Intervento", "Archivio Storico"])
 
@@ -158,9 +155,9 @@ else:
                             st.rerun()
 
                 with tab_del:
-                    st.error("Attenzione: l'eliminazione è definitiva.")
+                    st.warning("Azione irreversibile.")
                     conferma = st.checkbox("Confermo eliminazione", key=f"check_{u_key}")
-                    if st.button("ELIMINA ORA", key=f"del_{u_key}", disabled=not conferma):
+                    if st.button("ELIMINA DEFINITIVAMENTE", key=f"del_{u_key}", disabled=not conferma):
                         df = df.drop(i)
                         df.to_csv(DB_NOME, index=False)
                         salva_su_dropbox([DB_NOME])
