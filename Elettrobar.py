@@ -62,30 +62,42 @@ if not st.session_state["password_correct"]:
 # --- 3. CONFIGURAZIONE AMBIENTE ED ESTETICA ---
 st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
 
-# CSS CORRETTO (Cambiato unsafe_allow_index in unsafe_allow_html)
+# CSS per look "Canna di Fucile"
 st.markdown("""
     <style>
+    /* Sfondo principale dell'app */
     .stApp {
-        background-color: #E0E0E0;
+        background-color: #2C3E50;
     }
+    
+    /* Titoli e scritte principali in bianco per contrasto */
+    h1, h2, h3, p, span, label {
+        color: #FFFFFF !important;
+    }
+    
+    /* Box degli interventi (Expander) */
     .streamlit-expanderHeader {
-        background-color: white !important;
+        background-color: #34495E !important; /* Grigio leggermente più chiaro dello sfondo */
         border-radius: 8px;
-        border: 1px solid #E0E0E0;
+        border: 1px solid #455A64;
+        color: white !important;
+    }
+    
+    /* Testo dentro gli expander (che di base sarebbe nero) */
+    .streamlit-expanderContent {
+        background-color: #FFFFFF !important; /* Interno bianco per leggere bene i dati */
+        color: #000000 !important;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    /* Rende il form di modifica leggibile */
+    [data-testid="stForm"] {
+        background-color: #F8F9FA !important;
+        border-radius: 10px;
+        padding: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
-
-if "db_scaricato" not in st.session_state:
-    scarica_database_da_dropbox(DB_NOME)
-    st.session_state["db_scaricato"] = True
-
-if not os.path.exists(ALLEGATI_DIR): os.makedirs(ALLEGATI_DIR)
-if not os.path.exists(DB_NOME):
-    pd.DataFrame(columns=['Data', 'Brand', 'Modello', 'Motore', 'Sintomo', 'Soluzione', 'Allegato']).to_csv(DB_NOME, index=False)
-
-st.sidebar.title("MENU")
-menu = st.sidebar.radio("Vai a:", ["Nuovo Intervento", "Archivio Storico"])
 
 # --- 4. NUOVO INTERVENTO ---
 if menu == "Nuovo Intervento":
