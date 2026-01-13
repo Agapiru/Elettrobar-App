@@ -127,33 +127,50 @@ else:
 
         for i, row in df_filt.sort_index(ascending=False).iterrows():
             u_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
+            
             with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
-                with st.form(f"form_{u_key}"):
-                    c1, c2, c3 = st.columns(3)
-                    nb = c1.text_input("Brand", value=row['Brand'], key=f"b_{u_key}").upper()
-                    nm = c2.text_input("Modello", value=row['Modello'], key=f"m_{u_key}")
-                    nmt = c3.text_input("Motore", value=row['Motore'], key=f"mt_{u_key}")
-                    ns = st.text_area("Sintomo", value=row['Sintomo'], key=f"s_{u_key}")
-                    nsol = st.text_area("Soluzione", value=row['Soluzione'], key=f"sol_{u_key}")
-                    nf = st.file_uploader("Aggiorna foto", type=['png', 'jpg', 'jpeg'], key=f"f_{u_key}")
-                    
-                    if st.form_submit_button("💾 SALVA"):
-                        df.at[i, 'Brand'] = nb
-                        df.at[i, 'Modello'] = nm
-                        df.at[i, 'Motore'] = nmt
-                        df.at[i, 'Sintomo'] = ns
-                        df.at[i, 'Soluzione'] = nsol
-                        f_sync = [DB_NOME]
-                        if nf:
-                            n_path = os.path.join(ALLEGATI_DIR, nf.name)
-                            with open(n_path, "wb") as f: f.write(nf.getbuffer())
-                            df.at[i, 'Allegato'] = n_path
-                            f_sync.append(n_path)
+                # --- TAB PER ORGANIZZARE MODIFICA ED ELIMINAZIONE ---
+                tab_mod, tab_del = st.tabs(["✏️ Modifica", "🗑️ Elimina"])
+                
+                with tab_mod:
+                    with st.form(f"form_{u_key}"):
+                        c1, c2, c3 = st.columns(3)
+                        nb = c1.text_input("Brand", value=row['Brand'], key=f"b_{u_key}").upper()
+                        nm = c2.text_input("Modello", value=row['Modello'], key=f"m_{u_key}")
+                        nmt = c3.text_input("Motore", value=row['Motore'], key=f"mt_{u_key}")
+                        ns = st.text_area("Sintomo", value=row['Sintomo'], key=f"s_{u_key}")
+                        nsol = st.text_area("Soluzione", value=row['Soluzione'], key=f"sol_{u_key}")
+                        nf = st.file_uploader("Aggiorna foto", type=['png', 'jpg', 'jpeg'], key=f"f_{u_key}")
+                        
+                        if st.form_submit_button("💾 SALVA MODIFICHE"):
+                            df.at[i, 'Brand'] = nb
+                            df.at[i, 'Modello'] = nm
+                            df.at[i, 'Motore'] = nmt
+                            df.at[i, 'Sintomo'] = ns
+                            df.at[i, 'Soluzione'] = nsol
+                            f_sync = [DB_NOME]
+                            if nf:
+                                n_path = os.path.join(ALLEGATI_DIR, nf.name)
+                                with open(n_path, "wb") as f: f.write(nf.getbuffer())
+                                df.at[i, 'Allegato'] = n_path
+                                f_sync.append(n_path)
+                            df.to_csv(DB_NOME, index=False)
+                            salva_su_dropbox(f_sync)
+                            st.rerun()
+
+                with tab_del:
+                    st.warning("⚠️ L'eliminazione è permanente e rimuoverà il record anche da Dropbox.")
+                    conferma = st.checkbox("Confermo di voler eliminare questo intervento", key=f"check_{u_key}")
+                    if st.button("ELIMINA DEFINITIVAMENTE", key=f"del_{u_key}", disabled=not conferma, type="primary"):
+                        # Rimuoviamo la riga dal dataframe originale usando l'indice i
+                        df = df.drop(i)
                         df.to_csv(DB_NOME, index=False)
-                        salva_su_dropbox(f_sync)
+                        salva_su_dropbox([DB_NOME])
+                        st.success("Record eliminato con successo!")
                         st.rerun()
 
-                # --- VISUALIZZAZIONE FOTO (Riparata) ---
+                # --- VISUALIZZAZIONE FOTO (sempre visibile sotto i tab) ---
+                st.write("---")
                 p_db = str(row.get('Allegato', ""))
                 if p_db and p_db != "nan" and p_db.strip() != "":
                     n_file = os.path.basename(p_db)
@@ -167,6 +184,6 @@ else:
                                 _, res = dbx.files_download(f"/allegati/{n_file}")
                                 f.write(res.content)
                             st.rerun()
-                        except: st.warning(f"File {n_file} non trovato su Dropbox.")
+                        except: st.warning(f"Foto {n_file} non trovata.")
                 else:
                     st.info("Nessuna foto presente.")
