@@ -62,42 +62,33 @@ if not st.session_state["password_correct"]:
 # --- 3. CONFIGURAZIONE AMBIENTE ED ESTETICA ---
 st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
 
-# CSS per look "Canna di Fucile"
+# CSS Canna di Fucile (Dark Mode Professionale)
 st.markdown("""
     <style>
-    /* Sfondo principale dell'app */
-    .stApp {
-        background-color: #2C3E50;
-    }
-    
-    /* Titoli e scritte principali in bianco per contrasto */
-    h1, h2, h3, p, span, label {
-        color: #FFFFFF !important;
-    }
-    
-    /* Box degli interventi (Expander) */
-    .streamlit-expanderHeader {
-        background-color: #34495E !important; /* Grigio leggermente più chiaro dello sfondo */
-        border-radius: 8px;
+    .stApp { background-color: #2C3E50; }
+    h1, h2, h3, label, .stMarkdown { color: #FFFFFF !important; }
+    .streamlit-expanderHeader { 
+        background-color: #34495E !important; 
+        color: white !important; 
         border: 1px solid #455A64;
-        color: white !important;
     }
-    
-    /* Testo dentro gli expander (che di base sarebbe nero) */
-    .streamlit-expanderContent {
-        background-color: #FFFFFF !important; /* Interno bianco per leggere bene i dati */
-        color: #000000 !important;
-        border-radius: 0 0 8px 8px;
-    }
-    
-    /* Rende il form di modifica leggibile */
-    [data-testid="stForm"] {
-        background-color: #F8F9FA !important;
-        border-radius: 10px;
-        padding: 20px;
-    }
+    .streamlit-expanderContent { background-color: white !important; color: black !important; }
+    div[data-testid="stForm"] { background-color: #F8F9FA !important; border-radius: 10px; padding: 20px; color: black !important; }
+    div[data-testid="stForm"] p, div[data-testid="stForm"] label { color: black !important; }
     </style>
     """, unsafe_allow_html=True)
+
+if "db_scaricato" not in st.session_state:
+    scarica_database_da_dropbox(DB_NOME)
+    st.session_state["db_scaricato"] = True
+
+if not os.path.exists(ALLEGATI_DIR): os.makedirs(ALLEGATI_DIR)
+if not os.path.exists(DB_NOME):
+    pd.DataFrame(columns=['Data', 'Brand', 'Modello', 'Motore', 'Sintomo', 'Soluzione', 'Allegato']).to_csv(DB_NOME, index=False)
+
+# Menu laterale
+st.sidebar.title("MENU")
+menu = st.sidebar.radio("Vai a:", ["Nuovo Intervento", "Archivio Storico"])
 
 # --- 4. NUOVO INTERVENTO ---
 if menu == "Nuovo Intervento":
@@ -141,7 +132,6 @@ else:
             u_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
             
             with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
-                # --- TAB PER ORGANIZZARE MODIFICA ED ELIMINAZIONE ---
                 tab_mod, tab_del = st.tabs(["✏️ Modifica", "🗑️ Elimina"])
                 
                 with tab_mod:
@@ -154,12 +144,9 @@ else:
                         nsol = st.text_area("Soluzione", value=row['Soluzione'], key=f"sol_{u_key}")
                         nf = st.file_uploader("Aggiorna foto", type=['png', 'jpg', 'jpeg'], key=f"f_{u_key}")
                         
-                        if st.form_submit_button("💾 SALVA MODIFICHE"):
-                            df.at[i, 'Brand'] = nb
-                            df.at[i, 'Modello'] = nm
-                            df.at[i, 'Motore'] = nmt
-                            df.at[i, 'Sintomo'] = ns
-                            df.at[i, 'Soluzione'] = nsol
+                        if st.form_submit_button("💾 SALVA"):
+                            df.at[i, 'Brand'], df.at[i, 'Modello'], df.at[i, 'Motore'] = nb, nm, nmt
+                            df.at[i, 'Sintomo'], df.at[i, 'Soluzione'] = ns, nsol
                             f_sync = [DB_NOME]
                             if nf:
                                 n_path = os.path.join(ALLEGATI_DIR, nf.name)
@@ -171,31 +158,24 @@ else:
                             st.rerun()
 
                 with tab_del:
-                    st.warning("⚠️ L'eliminazione è permanente e rimuoverà il record anche da Dropbox.")
-                    conferma = st.checkbox("Confermo di voler eliminare questo intervento", key=f"check_{u_key}")
-                    if st.button("ELIMINA DEFINITIVAMENTE", key=f"del_{u_key}", disabled=not conferma, type="primary"):
-                        # Rimuoviamo la riga dal dataframe originale usando l'indice i
+                    st.error("Attenzione: l'eliminazione è definitiva.")
+                    conferma = st.checkbox("Confermo eliminazione", key=f"check_{u_key}")
+                    if st.button("ELIMINA ORA", key=f"del_{u_key}", disabled=not conferma):
                         df = df.drop(i)
                         df.to_csv(DB_NOME, index=False)
                         salva_su_dropbox([DB_NOME])
-                        st.success("Record eliminato con successo!")
                         st.rerun()
 
-                # --- VISUALIZZAZIONE FOTO (sempre visibile sotto i tab) ---
-                st.write("---")
+                # Foto
                 p_db = str(row.get('Allegato', ""))
                 if p_db and p_db != "nan" and p_db.strip() != "":
                     n_file = os.path.basename(p_db)
                     p_loc = os.path.join(ALLEGATI_DIR, n_file)
                     if os.path.exists(p_loc):
-                        with open(p_loc, "rb") as f: st.image(f.read(), width=500)
+                        st.image(p_loc, width=500)
                     else:
                         try:
                             dbx = connetti_dropbox()
-                            with open(p_loc, "wb") as f:
-                                _, res = dbx.files_download(f"/allegati/{n_file}")
-                                f.write(res.content)
+                            dbx.files_download_to_file(p_loc, f"/allegati/{n_file}")
                             st.rerun()
-                        except: st.warning(f"Foto {n_file} non trovata.")
-                else:
-                    st.info("Nessuna foto presente.")
+                        except: st.warning("Foto non trovata.")
