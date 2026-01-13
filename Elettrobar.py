@@ -1,11 +1,3 @@
-Valerio, hai ragione, quell'errore è dovuto a un piccolissimo refuso nel nome di un parametro. In Streamlit il comando corretto è unsafe_allow_html=True, mentre per errore è stato scritto unsafe_allow_index=True. Python non riconosce quel comando e "si blocca".
-
-Inoltre, ho notato che nel tuo codice mancava un else: per gestire correttamente la scritta "Nessuna foto allegata" se la cella è vuota, evitando che il sistema cerchi di scaricare il nulla.
-
-Ecco il codice definitivo, corretto e testato. Copia tutto e sostituiscilo al contenuto attuale:
-
-Python
-
 import streamlit as st
 import pandas as pd
 import os
