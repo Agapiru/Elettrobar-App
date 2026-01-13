@@ -66,7 +66,7 @@ st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
 st.markdown("""
     <style>
     .stApp {
-        background-color: #F5F5F5;
+        background-color: #E0E0E0;
     }
     .streamlit-expanderHeader {
         background-color: white !important;
