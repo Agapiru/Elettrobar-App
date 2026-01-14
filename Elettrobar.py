@@ -117,22 +117,6 @@ if menu == "Nuovo Intervento":
                 st.success("✅ Salvato!")
             else: st.warning("Brand e Modello obbligatori.")
 
-Sì, Valerio, sostituisce la struttura portante della sezione Archivio, ma devi fare attenzione a non perdere la "polpa" che avevi scritto tu (ovvero i tab, i form di modifica e il pulsante elimina).
-
-Per sicurezza, ecco il blocco completo e pronto all'uso. Ho integrato la nuova logica di paginazione con le tue funzioni di modifica ed eliminazione, così non devi fare "taglia e cuci" rischiando di perdere pezzi.
-
-Copia e sostituisci tutto quello che c'è dopo # --- 5. ARCHIVIO ---:
-
-Python
-
-Valerio, l'errore è dovuto al fatto che nel copia-incolla sono finite dentro al file Python anche le mie parole di spiegazione ("Per sicurezza, ecco il blocco..."). Python cerca di leggerle come codice e va in errore.
-
-In un file .py, tutto ciò che non è codice deve essere preceduto dal simbolo #.
-
-Ecco il blocco pulito. Cancella tutto quello che hai sotto # --- 5. ARCHIVIO --- e incolla esattamente questo (assicurati di non avere testo libero prima o dopo):
-
-Python
-
 # --- 5. ARCHIVIO ---
 else:
     st.header("🔍 Archivio Storico")
