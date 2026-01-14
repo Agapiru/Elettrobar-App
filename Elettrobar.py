@@ -135,6 +135,9 @@ else:
 
         # Applicazione Filtri
         df_display = df.copy()
+        # Reset della pagina se i record filtrati sono meno di quelli necessari per la pagina attuale
+        if totale_record <= inizio:
+            st.session_state.pagina_attuale = 0
         if filtro_brand != "TUTTI":
             df_display = df_display[df_display['Brand'] == filtro_brand]
         
