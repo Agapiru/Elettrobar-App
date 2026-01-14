@@ -117,23 +117,33 @@ if menu == "Nuovo Intervento":
                 st.success("✅ Salvato!")
             else: st.warning("Brand e Modello obbligatori.")
 
+Sì, Valerio, sostituisce la struttura portante della sezione Archivio, ma devi fare attenzione a non perdere la "polpa" che avevi scritto tu (ovvero i tab, i form di modifica e il pulsante elimina).
+
+Per sicurezza, ecco il blocco completo e pronto all'uso. Ho integrato la nuova logica di paginazione con le tue funzioni di modifica ed eliminazione, così non devi fare "taglia e cuci" rischiando di perdere pezzi.
+
+Copia e sostituisci tutto quello che c'è dopo # --- 5. ARCHIVIO ---:
+
+Python
+
 # --- 5. ARCHIVIO ---
 else:
     st.header("🔍 Archivio Storico")
     if os.path.exists(DB_NOME):
         df = pd.read_csv(DB_NOME)
         
-        # Filtri nella Sidebar (solo per la sezione Archivio)
+        # 1. Parametri base
+        record_per_pagina = 10
+        if "pagina_attuale" not in st.session_state:
+            st.session_state.pagina_attuale = 0
+
+        # 2. Filtri nella Sidebar
         st.sidebar.markdown("---")
         st.sidebar.subheader("FILTRI")
-        
-        # Filtro per Brand
         lista_brand = ["TUTTI"] + sorted(df['Brand'].dropna().unique().tolist())
         filtro_brand = st.sidebar.selectbox("Filtra per Marca", lista_brand)
-        
         search = st.sidebar.text_input("Cerca parola chiave...")
 
-        # Applicazione Filtri
+        # 3. Applicazione Filtri
         df_display = df.copy()
         if filtro_brand != "TUTTI":
             df_display = df_display[df_display['Brand'] == filtro_brand]
@@ -141,15 +151,17 @@ else:
         if search:
             df_display = df_display[df_display.apply(lambda r: search.lower() in r.astype(str).str.lower().values, axis=1)]
 
-        # --- LOGICA DI PAGINAZIONE ---
-        record_per_pagina = 10
-        if "pagina_attuale" not in st.session_state:
-            st.session_state.pagina_attuale = 0
-
+        # 4. Calcoli per paginazione
         totale_record = len(df_display)
+        inizio = st.session_state.pagina_attuale * record_per_pagina
+        
+        if totale_record <= inizio:
+            st.session_state.pagina_attuale = 0
+            inizio = 0
+
         num_pagine = (totale_record // record_per_pagina) + (1 if totale_record % record_per_pagina > 0 else 0)
 
-        # Navigazione pagine
+        # 5. Navigazione pagine
         col_prev, col_page, col_next = st.columns([1, 2, 1])
         if col_prev.button("⬅️ Precedente") and st.session_state.pagina_attuale > 0:
             st.session_state.pagina_attuale -= 1
@@ -161,24 +173,61 @@ else:
             st.session_state.pagina_attuale += 1
             st.rerun()
 
-        # Selezione dei record da mostrare
-        inizio = st.session_state.pagina_attuale * record_per_pagina
+        # 6. Selezione record da mostrare
         fine = inizio + record_per_pagina
-        
-        # Mostriamo i record (ordinati dal più recente)
         df_paginato = df_display.sort_index(ascending=False).iloc[inizio:fine]
 
+        # 7. Ciclo di visualizzazione (il tuo codice originale integrato)
         for i, row in df_paginato.iterrows():
             u_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
             
             with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
-                # ... QUI INSERISCI TUTTO IL TUO CODICE DEI TAB (MODIFICA/ELIMINA/FOTO) ...
-                # (Mantieni pure il codice che avevi già scritto per la visualizzazione interna)
-                st.info(f"**Motore:** {row['Motore']} | **Sintomo:** {row['Sintomo']}")
-                st.success(f"**Soluzione:** {row['Soluzione']}")
+                tab_mod, tab_del = st.tabs(["✏️ Modifica", "🗑️ Elimina"])
                 
-                # Gestione foto (quella che hai già)
+                with tab_mod:
+                    with st.form(f"form_{u_key}"):
+                        c1, c2, c3 = st.columns(3)
+                        nb = c1.text_input("Brand", value=row['Brand'], key=f"b_{u_key}").upper()
+                        nm = c2.text_input("Modello", value=row['Modello'], key=f"m_{u_key}")
+                        nmt = c3.text_input("Motore", value=row['Motore'], key=f"mt_{u_key}")
+                        ns = st.text_area("Sintomo", value=row['Sintomo'], key=f"s_{u_key}")
+                        nsol = st.text_area("Soluzione", value=row['Soluzione'], key=f"sol_{u_key}")
+                        nf = st.file_uploader("Aggiorna foto", type=['png', 'jpg', 'jpeg'], key=f"f_{u_key}")
+                        
+                        if st.form_submit_button("💾 SALVA"):
+                            df.at[i, 'Brand'], df.at[i, 'Modello'], df.at[i, 'Motore'] = nb, nm, nmt
+                            df.at[i, 'Sintomo'], df.at[i, 'Soluzione'] = ns, nsol
+                            f_sync = [DB_NOME]
+                            if nf:
+                                n_path = os.path.join(ALLEGATI_DIR, nf.name)
+                                with open(n_path, "wb") as f: f.write(nf.getbuffer())
+                                df.at[i, 'Allegato'] = n_path
+                                f_sync.append(n_path)
+                            df.to_csv(DB_NOME, index=False)
+                            salva_su_dropbox(f_sync)
+                            st.rerun()
+
+                with tab_del:
+                    st.warning("Azione irreversibile.")
+                    conferma = st.checkbox("Confermo eliminazione", key=f"check_{u_key}")
+                    if st.button("ELIMINA DEFINITIVAMENTE", key=f"del_{u_key}", disabled=not conferma):
+                        # Nota: usiamo df (il dataframe completo) per cancellare correttamente
+                        df = pd.read_csv(DB_NOME)
+                        df = df.drop(i)
+                        df.to_csv(DB_NOME, index=False)
+                        salva_su_dropbox([DB_NOME])
+                        st.rerun()
+
+                # Visualizzazione Foto
                 p_db = str(row.get('Allegato', ""))
                 if p_db and p_db != "nan" and p_db.strip() != "":
-                    if os.path.exists(p_db):
-                        st.image(p_db, width=400)
+                    n_file = os.path.basename(p_db)
+                    p_loc = os.path.join(ALLEGATI_DIR, n_file)
+                    if os.path.exists(p_loc):
+                        st.image(p_loc, width=500)
+                    else:
+                        try:
+                            dbx = connetti_dropbox()
+                            dbx.files_download_to_file(p_loc, f"/allegati/{n_file}")
+                            st.rerun()
+                        except: st.warning("Foto non trovata.")
