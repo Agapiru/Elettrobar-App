@@ -123,19 +123,17 @@ else:
     if os.path.exists(DB_NOME):
         df = pd.read_csv(DB_NOME)
         
-        # 1. Definiamo i parametri base
-        record_per_pagina = 10
-        if "pagina_attuale" not in st.session_state:
-            st.session_state.pagina_attuale = 0
-
-        # 2. Filtri nella Sidebar
+        # Filtri nella Sidebar (solo per la sezione Archivio)
         st.sidebar.markdown("---")
         st.sidebar.subheader("FILTRI")
+        
+        # Filtro per Brand
         lista_brand = ["TUTTI"] + sorted(df['Brand'].dropna().unique().tolist())
         filtro_brand = st.sidebar.selectbox("Filtra per Marca", lista_brand)
+        
         search = st.sidebar.text_input("Cerca parola chiave...")
 
-        # 3. Applicazione Filtri
+        # Applicazione Filtri
         df_display = df.copy()
         if filtro_brand != "TUTTI":
             df_display = df_display[df_display['Brand'] == filtro_brand]
@@ -143,18 +141,15 @@ else:
         if search:
             df_display = df_display[df_display.apply(lambda r: search.lower() in r.astype(str).str.lower().values, axis=1)]
 
-        # 4. Calcoliamo i valori DOPO i filtri
-        totale_record = len(df_display)
-        inizio = st.session_state.pagina_attuale * record_per_pagina
-        
-        # 5. IL CONTROLLO (IL BULLONE): va qui!
-        if totale_record <= inizio:
+        # --- LOGICA DI PAGINAZIONE ---
+        record_per_pagina = 10
+        if "pagina_attuale" not in st.session_state:
             st.session_state.pagina_attuale = 0
-            inizio = 0 # resettiamo anche inizio per il calcolo successivo
 
-        # 6. Logica di Paginazione (pulsanti)
+        totale_record = len(df_display)
         num_pagine = (totale_record // record_per_pagina) + (1 if totale_record % record_per_pagina > 0 else 0)
 
+        # Navigazione pagine
         col_prev, col_page, col_next = st.columns([1, 2, 1])
         if col_prev.button("⬅️ Precedente") and st.session_state.pagina_attuale > 0:
             st.session_state.pagina_attuale -= 1
@@ -166,9 +161,24 @@ else:
             st.session_state.pagina_attuale += 1
             st.rerun()
 
-        # 7. Selezione e Visualizzazione
+        # Selezione dei record da mostrare
+        inizio = st.session_state.pagina_attuale * record_per_pagina
         fine = inizio + record_per_pagina
+        
+        # Mostriamo i record (ordinati dal più recente)
         df_paginato = df_display.sort_index(ascending=False).iloc[inizio:fine]
 
         for i, row in df_paginato.iterrows():
-            # ... resto del tuo codice (expander, tab, ecc.)
+            u_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
+            
+            with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
+                # ... QUI INSERISCI TUTTO IL TUO CODICE DEI TAB (MODIFICA/ELIMINA/FOTO) ...
+                # (Mantieni pure il codice che avevi già scritto per la visualizzazione interna)
+                st.info(f"**Motore:** {row['Motore']} | **Sintomo:** {row['Sintomo']}")
+                st.success(f"**Soluzione:** {row['Soluzione']}")
+                
+                # Gestione foto (quella che hai già)
+                p_db = str(row.get('Allegato', ""))
+                if p_db and p_db != "nan" and p_db.strip() != "":
+                    if os.path.exists(p_db):
+                        st.image(p_db, width=400)
