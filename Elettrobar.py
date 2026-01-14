@@ -125,6 +125,14 @@ Copia e sostituisci tutto quello che c'è dopo # --- 5. ARCHIVIO ---:
 
 Python
 
+Valerio, l'errore è dovuto al fatto che nel copia-incolla sono finite dentro al file Python anche le mie parole di spiegazione ("Per sicurezza, ecco il blocco..."). Python cerca di leggerle come codice e va in errore.
+
+In un file .py, tutto ciò che non è codice deve essere preceduto dal simbolo #.
+
+Ecco il blocco pulito. Cancella tutto quello che hai sotto # --- 5. ARCHIVIO --- e incolla esattamente questo (assicurati di non avere testo libero prima o dopo):
+
+Python
+
 # --- 5. ARCHIVIO ---
 else:
     st.header("🔍 Archivio Storico")
@@ -177,7 +185,7 @@ else:
         fine = inizio + record_per_pagina
         df_paginato = df_display.sort_index(ascending=False).iloc[inizio:fine]
 
-        # 7. Ciclo di visualizzazione (il tuo codice originale integrato)
+        # 7. Ciclo di visualizzazione
         for i, row in df_paginato.iterrows():
             u_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
             
@@ -211,10 +219,9 @@ else:
                     st.warning("Azione irreversibile.")
                     conferma = st.checkbox("Confermo eliminazione", key=f"check_{u_key}")
                     if st.button("ELIMINA DEFINITIVAMENTE", key=f"del_{u_key}", disabled=not conferma):
-                        # Nota: usiamo df (il dataframe completo) per cancellare correttamente
-                        df = pd.read_csv(DB_NOME)
-                        df = df.drop(i)
-                        df.to_csv(DB_NOME, index=False)
+                        df_full = pd.read_csv(DB_NOME)
+                        df_full = df_full.drop(i)
+                        df_full.to_csv(DB_NOME, index=False)
                         salva_su_dropbox([DB_NOME])
                         st.rerun()
 
