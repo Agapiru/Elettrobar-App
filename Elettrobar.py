@@ -1,3 +1,9 @@
+Certamente, Valerio. Ho integrato la logica della maschera booleana (mask) che abbiamo definito insieme. Questa versione è la più potente perché permette di trovare una parola (es. "perdita", "cuscinetto", "condensatore") ovunque sia stata scritta, rendendo l'archivio una vera enciclopedia tecnica della tua officina.
+
+Ecco il codice completo, pulito e pronto all'uso:
+
+Python
+
 import streamlit as st
 import pandas as pd
 import os
@@ -62,7 +68,6 @@ if not st.session_state["password_correct"]:
 # --- 3. CONFIGURAZIONE AMBIENTE ED ESTETICA ---
 st.set_page_config(page_title="ELETTROBAR 1.0", layout="wide")
 
-# CSS Grigio Chiaro Professionale
 st.markdown("""
     <style>
     .stApp { background-color: #F5F5F5; }
@@ -135,22 +140,19 @@ else:
         filtro_brand = st.sidebar.selectbox("Filtra per Marca", lista_brand)
         search = st.sidebar.text_input("Cerca parola chiave...")
 
-        # 3. Applicazione Filtri
+        # 3. Applicazione Filtri (IMPLEMENTAZIONE RICHIESTA)
         df_display = df.copy()
         if filtro_brand != "TUTTI":
             df_display = df_display[df_display['Brand'] == filtro_brand]
         
         if search:
-            df_display = df_display[df_display.apply(lambda r: search.lower() in r.astype(str).str.lower().values, axis=1)]
+            search_low = search.lower()
+            # La maschera booleana controlla se la stringa è contenuta in qualsiasi cella della riga
+            mask = df_display.apply(lambda r: r.astype(str).str.lower().str.contains(search_low).any(), axis=1)
+            df_display = df_display[mask]
 
         # 4. Calcoli per paginazione
         totale_record = len(df_display)
-        inizio = st.session_state.pagina_attuale * record_per_pagina
-        
-        if totale_record <= inizio:
-            st.session_state.pagina_attuale = 0
-            inizio = 0
-
         num_pagine = (totale_record // record_per_pagina) + (1 if totale_record % record_per_pagina > 0 else 0)
 
         # 5. Navigazione pagine
@@ -166,13 +168,13 @@ else:
             st.rerun()
 
         # 6. Selezione record da mostrare
+        inizio = st.session_state.pagina_attuale * record_per_pagina
         fine = inizio + record_per_pagina
         df_paginato = df_display.sort_index(ascending=False).iloc[inizio:fine]
 
         # 7. Ciclo di visualizzazione
         for i, row in df_paginato.iterrows():
             u_key = f"{i}_{row['Data']}".replace(" ", "").replace("/", "").replace(":", "")
-            
             with st.expander(f"📝 {row['Brand']} {row['Modello']} - {row['Data']}"):
                 tab_mod, tab_del = st.tabs(["✏️ Modifica", "🗑️ Elimina"])
                 
