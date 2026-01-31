@@ -1,9 +1,3 @@
-Certamente, Valerio. Ho integrato la logica della maschera booleana (mask) che abbiamo definito insieme. Questa versione è la più potente perché permette di trovare una parola (es. "perdita", "cuscinetto", "condensatore") ovunque sia stata scritta, rendendo l'archivio una vera enciclopedia tecnica della tua officina.
-
-Ecco il codice completo, pulito e pronto all'uso:
-
-Python
-
 import streamlit as st
 import pandas as pd
 import os
